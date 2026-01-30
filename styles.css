@@ -198,6 +198,11 @@ body {
     color: #721c24;
 }
 
+.status-indicator.cancelled {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
 .status-indicator .pulse {
     width: 8px;
     height: 8px;
@@ -256,6 +261,11 @@ body {
     border-left-color: #6c757d;
 }
 
+.status-event.cancelled {
+    border-left-color: #dc3545;
+    background: #fff5f5;
+}
+
 .event-icon {
     width: 20px;
     text-align: center;
@@ -307,6 +317,14 @@ body {
     padding: 10px;
     border-radius: 5px;
     border: 1px solid #f5c6cb;
+}
+
+.cancelled-message {
+    color: #383d41;
+    background: #e2e3e5;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #d6d8db;
 }
 
 /* Стили для markdown контента */
@@ -434,6 +452,15 @@ body {
     background: #ccc;
     cursor: not-allowed;
     box-shadow: none;
+}
+
+/* Кнопка прерывания */
+#send.cancel-mode {
+    background: linear-gradient(135deg, #dc3545, #e74c5c);
+}
+
+#send.cancel-mode:hover {
+    background: linear-gradient(135deg, #c82333, #d63946);
 }
 
 /* Скроллбар */

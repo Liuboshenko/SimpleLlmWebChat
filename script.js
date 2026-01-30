@@ -7,6 +7,7 @@ const WS_BASE_URL = 'ws://localhost:8000/ws';
 let currentSessionId = null;
 let currentWebSocket = null;
 let isProcessing = false;
+let currentResponseContainer = null;
 
 // DOM элементы
 const messagesDiv = document.getElementById('messages');
@@ -79,6 +80,61 @@ function updateConnectionStatus(connected, text = null) {
         connectionStatus.className = 'disconnected';
         connectionStatus.querySelector('.status-text').textContent = text || 'Отключено';
     }
+}
+
+// Обновление состояния кнопки отправки/прерывания
+function updateSendButton(processing) {
+    if (processing) {
+        sendButton.textContent = 'Прервать';
+        sendButton.classList.add('cancel-mode');
+        sendButton.disabled = false;
+    } else {
+        sendButton.textContent = 'Отправить';
+        sendButton.classList.remove('cancel-mode');
+        sendButton.disabled = false;
+    }
+}
+
+// Прерывание выполнения
+function cancelExecution() {
+    if (!isProcessing) return;
+
+    // Закрываем WebSocket
+    if (currentWebSocket) {
+        currentWebSocket.close();
+        currentWebSocket = null;
+    }
+
+    // Обновляем статус в панели
+    if (currentResponseContainer) {
+        showCancelled(currentResponseContainer);
+    }
+
+    // Сбрасываем состояние
+    isProcessing = false;
+    currentResponseContainer = null;
+    updateSendButton(false);
+    updateConnectionStatus(false, 'Прервано');
+}
+
+// Показ статуса прерывания
+function showCancelled(responseContainer) {
+    const statusIndicator = responseContainer.statusIndicator;
+    statusIndicator.classList.remove('processing');
+    statusIndicator.classList.add('cancelled');
+    statusIndicator.querySelector('.status-text').textContent = 'Прервано';
+    statusIndicator.querySelector('.pulse')?.remove();
+
+    // Добавляем событие прерывания в список
+    const cancelEvent = {
+        event_type: 'cancelled',
+        agent_name: 'system',
+        payload: { message: 'Выполнение прервано пользователем' }
+    };
+    addStatusEvent(responseContainer.statusList, cancelEvent);
+
+    responseContainer.answerPanel.style.display = 'block';
+    responseContainer.answerContent.innerHTML = '<div class="cancelled-message">Выполнение было прервано пользователем</div>';
 }
 
 // Создание сообщения пользователя
@@ -178,7 +234,10 @@ function addStatusEvent(statusList, event) {
     let statusIcon = '⏳';
     let statusClass = 'pending';
 
-    if (event.event_type.includes('completed') || event.event_type.includes('finished')) {
+    if (event.event_type === 'cancelled') {
+        statusIcon = '⛔';
+        statusClass = 'cancelled';
+    } else if (event.event_type.includes('completed') || event.event_type.includes('finished')) {
         statusIcon = '✓';
         statusClass = 'completed';
     } else if (event.event_type.includes('started') || event.event_type.includes('working')) {
@@ -205,7 +264,9 @@ function addStatusEvent(statusList, event) {
     // Формируем описание события
     let details = '';
     if (event.payload) {
-        if (event.payload.stage) {
+        if (event.payload.message) {
+            details = ` → ${event.payload.message}`;
+        } else if (event.payload.stage) {
             details = ` → ${event.payload.stage}`;
         }
         if (event.payload.attempt) {
@@ -361,7 +422,7 @@ async function sendRequest(userPrompt) {
     if (isProcessing) return;
 
     isProcessing = true;
-    sendButton.disabled = true;
+    updateSendButton(true);
 
     // Скрываем приветствие
     const welcomeMessageDiv = document.getElementById('welcome-message');
@@ -391,6 +452,7 @@ async function sendRequest(userPrompt) {
 
         // Создаем контейнер ответа
         responseContainer = createAgentResponseContainer(currentSessionId);
+        currentResponseContainer = responseContainer;
 
         // Шаг 2: Подключение к WebSocket
         const wsUrl = `${WS_BASE_URL}/${currentSessionId}`;
@@ -423,7 +485,8 @@ async function sendRequest(userPrompt) {
         currentWebSocket.onclose = () => {
             updateConnectionStatus(false, 'Отключено');
             isProcessing = false;
-            sendButton.disabled = false;
+            currentResponseContainer = null;
+            updateSendButton(false);
             currentWebSocket = null;
         };
 
@@ -434,7 +497,8 @@ async function sendRequest(userPrompt) {
             }
             updateConnectionStatus(false, 'Ошибка');
             isProcessing = false;
-            sendButton.disabled = false;
+            currentResponseContainer = null;
+            updateSendButton(false);
         };
 
     } catch (error) {
@@ -450,17 +514,24 @@ async function sendRequest(userPrompt) {
 
         updateConnectionStatus(false, 'Ошибка');
         isProcessing = false;
-        sendButton.disabled = false;
+        currentResponseContainer = null;
+        updateSendButton(false);
     }
 }
 
-// Обработчик отправки
+// Обработчик кнопки (отправка или прерывание)
 sendButton.addEventListener('click', () => {
-    const userInput = input.value.trim();
-    if (!userInput) return;
+    if (isProcessing) {
+        // Режим прерывания
+        cancelExecution();
+    } else {
+        // Режим отправки
+        const userInput = input.value.trim();
+        if (!userInput) return;
 
-    input.value = '';
-    sendRequest(userInput);
+        input.value = '';
+        sendRequest(userInput);
+    }
 });
 
 // Обработчик клавиш: Enter - отправить, Ctrl+Enter - новая строка
@@ -474,7 +545,7 @@ input.addEventListener('keydown', (e) => {
             input.selectionStart = input.selectionEnd = start + 1;
             e.preventDefault();
         } else {
-            // Enter - отправляем сообщение
+            // Enter - отправляем сообщение (только если не в режиме обработки)
             e.preventDefault();
             const userInput = input.value.trim();
             if (userInput && !isProcessing) {
