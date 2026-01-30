@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BulatAI-assistant</title>
-    <link rel="shortcut icon" href="logo/bulat.png" type="image/png">  <!-- Add this line for the favicon -->
+    <link rel="shortcut icon" href="logo/bulat.png" type="image/png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -13,13 +13,16 @@
         <div id="header">
             <img src="logo/bulat.png" alt="Логотип BulatAI">
             <h1>BulatAI-assistant</h1>
+            <div id="connection-status" class="disconnected">
+                <span class="status-dot"></span>
+                <span class="status-text">Отключено</span>
+            </div>
         </div>
-        <!-- Новый контейнер для приветственного сообщения -->
         <div id="welcome-message"></div>
         <div id="messages"></div>
         <div id="input-area">
-            <textarea id="input" rows="3" placeholder="Enter your prompt..."></textarea>
-            <button id="send">Send</button>
+            <textarea id="input" rows="3" placeholder="Введите запрос... (Enter - отправить, Ctrl+Enter - новая строка)"></textarea>
+            <button id="send">Отправить</button>
         </div>
     </div>
 
